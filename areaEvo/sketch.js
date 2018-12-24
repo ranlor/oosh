@@ -42,7 +42,7 @@ let stats;
 
 let exceptionalPairThreshold = 0.9;
 
-let area = 2;
+let area = 5;
 
 const RESTART_CHAR = 'R';
 const directions = {
@@ -96,7 +96,7 @@ function drawRect(centerPoint, index, score)
 
 function drawScore(centerPoint, score)
 {
-    fill(128,128,0);
+    fill(90,90,90);
     text(score+"", (centerPoint[0]*DIST) + (cW / 2), (centerPoint[1]*DIST) + (cH / 2), DIST, DIST);
     strokeWeight(2);
     fill(255,255,255,128);
