@@ -42,7 +42,7 @@ let stats;
 
 let exceptionalPairThreshold = 0.9;
 
-let area = 5;
+let area = 10;
 
 const RESTART_CHAR = 'R';
 const directions = {
@@ -74,7 +74,7 @@ function setup() {
   //createCanvas(640, 360);
   popmax = 100;
   genMax = 1000;
-  mutationRate = 0.05;
+  mutationRate = 0.01;
 
   // Create a population with a target phrase, mutation rate, and population max
   population = new Population(area, mutationRate, popmax, genMax);
@@ -156,23 +156,80 @@ function dnaClickHandler(event)
     drawDNAGrid(dna);
 }
 
-function draw() {
-    // Generate mating pool
-    population.naturalSelection();
-    //Create next generation
-    population.generate();
-    // Calculate fitness
-    population.calcFitness();
 
-    population.evaluate();
+// room
+//       wall 1
+//       --------------------
+// wall4 |                  | wall 2
+//       |                  |
+//       |                  |
+//       |                    door
+//       --------------------
+//        wall 3
+function generateRoom(w ,h, doorWidthPercent, leftPoint)
+{
+    var doorWall = floor(random(0,3))+1;
+    console.log(doorWall)
+    var doorWidth = 10;
 
-    // If we found the target phrase, stop
-    if (population.isFinished()) {
-        //println(millis()/1000.0);
-        noLoop();
+    if (doorWall === 1 || doorWall == 3)
+    {
+        doorWidth = (doorWidthPercent/100) * w;
+    }
+    else
+    {
+        doorWidth = (doorWidthPercent/100) * h;
     }
 
-    displayInfo();
+    stroke (255);
+
+    // wall 1
+    var dw = doorWall === 1 ? doorWidth : 0;
+    line(leftPoint[0],leftPoint[1], leftPoint[0] + w - dw, leftPoint[1]);
+    // wall 2 
+    dw = doorWall === 2 ? doorWidth : 0;
+    line(leftPoint[0] + w, leftPoint[1], leftPoint[0] + w, leftPoint[1] + h - dw);
+    // wall 3
+    dw = doorWall === 3 ? doorWidth : 0;
+    line( leftPoint[0] + w, leftPoint[1] + h , leftPoint[0] + dw, leftPoint[1] + h);
+    dw = doorWall === 4 ? doorWidth : 0;
+    line(leftPoint[0] , leftPoint[1] + h, leftPoint[0] , leftPoint[1] + dw);
+
+}
+
+function draw() {
+    console.log("draw");
+    var worldConstrains = [300,150];
+    var middlePoint = [cW/2, cH/2];
+    stroke (255,0,0);
+    rect(middlePoint[0] - worldConstrains[0]/2, middlePoint[1] - worldConstrains[1]/2, worldConstrains[0], worldConstrains[1]);
+    for (var i=0; i<4; ++i)
+    {
+        var w = floor(random(10,worldConstrains[0]));
+        var ratio = floor(random(3,4)); / floor(random(2,4));
+        var h = floor(random(10,worldConstrains[1]));
+
+        var y = floor(random(middlePoint[1] - worldConstrains[1]/2, middlePoint[1] + worldConstrains[1]/2));
+        var x = floor(random(middlePoint[0] - worldConstrains[0]/2, middlePoint[0] + worldConstrains[0]/2));
+        generateRoom(w,h, 20/* percent */, [x,y]);
+    }
+    noLoop();
+    // // Generate mating pool
+    // population.naturalSelection();
+    // //Create next generation
+    // population.generate();
+    // // Calculate fitness
+    // population.calcFitness();
+
+    // population.evaluate();
+
+    // // If we found the target phrase, stop
+    // if (population.isFinished()) {
+    //     //println(millis()/1000.0);
+    //     noLoop();
+    // }
+
+    // displayInfo();
 }
 
 function addClickEvent()
