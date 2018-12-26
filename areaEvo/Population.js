@@ -1,15 +1,6 @@
-// The Nature of Code
-// Daniel Shiffman
-// http://natureofcode.com
-
-// Genetic Algorithm, Evolving Shakespeare
-
-// A class to describe a population of virtual organisms
-// In this case, each organism is just an instance of a DNA object
-
 class Population {
 
-    constructor(area, mutationRate, maxPop, maxGen) {
+    constructor(segmentsCount, mutationRate, maxPop, maxGen) {
 
         this.population; // Array to hold the current population
         this.matingPool; // ArrayList which we will use for our "mating pool"
@@ -20,19 +11,9 @@ class Population {
 
         this.best = "";
         
-        if (area > Math.sqrt(Number.MAX_SAFE_INTEGER))
-        {
-            area = Math.sqrt(Number.MAX_SAFE_INTEGER);
-        }
-        
-        let areaSquared = area * area;
-
-        var perfecrScoreFuzzyness = 1;//0.96;
-        this.fuzzyPerfectScore = perfectFitness(areaSquared) * perfecrScoreFuzzyness;
-
         this.population = [];
         for (let i = 0; i < maxPop; i++) {
-            this.population[i] = new DNA(areaSquared);
+            this.population[i] = new DNA(segmentsCount);
         }
         this.matingPool = [];
         this.calcFitness();
@@ -131,7 +112,7 @@ class Population {
         }
 
         this.best = index;
-        if (worldrecord > this.fuzzyPerfectScore || this.generations > this.maxGenerations) {
+        if (worldrecord >= perfectFitness(this.population[index].genes) || this.generations > this.maxGenerations) {
             this.finished = true;
         }
     }
@@ -151,7 +132,7 @@ class Population {
 
 
         for (let i = 0; i < displayLimit; i++) {
-            everything += "<span class='dnaSel'> " + this.population[i].getDNAString() + "</span><br>";
+            everything += "<span class='dnaSel' id="+i+"> " + this.population[i].getDNAString() + "</span> "+ this.population[i].fitness +"<br>";
         }
         return everything;
     }

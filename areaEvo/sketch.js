@@ -42,19 +42,29 @@ let stats;
 
 let exceptionalPairThreshold = 0.9;
 
-let area = 10;
+const yPointCount = 2; // how many y axis grid points
+const xPointCount = 3; // how many x axis grid points
 
-const RESTART_CHAR = 'R';
-const directions = {
-    RIGHT: 1,
-    DOWN: 2,
-    LEFT: 3,
-    UP: 4
+const MapLegend = {
+    VISITED : 2,
+    BORDER : 1,
+    UNVISITED : 0
+};
+let defaultFloorMap = [];
+
+class Segment {
+    constructor(startPoint, endPoint, mc)
+    {
+        this.sP = startPoint.slice(0);
+        this.eP = endPoint.slice(0);
+        
+        this.mapCoord = mc.slice(0);
+    }
 };
 
-let outerWallsDim;
-let gridPoints;
-let linesSegments;
+let outerWallsDim = {};
+let gridPoints = [];
+let linesSegments = [];
 
 function setup() {
     bestPhrase = createP("Best floorPlan:");
@@ -80,80 +90,80 @@ function setup() {
     genMax = 1000;
     mutationRate = 0.01;
 
-    // Create a population with a target phrase, mutation rate, and population max
-    population = new Population(area, mutationRate, popmax, genMax);
 
     outerWallsDim = generateOuterWalls();
     gridPoints = generateGridPoints(outerWallsDim.width, outerWallsDim.height);
     linesSegments = generateLineSegments(outerWallsDim, gridPoints);
-    console.log(outerWallsDim);
-    console.log(gridPoints.yPoints);
+    console.log(linesSegments);
+    defaultFloorMap = generateDefaultFloorMap(gridPoints.xPoints.length, gridPoints.yPoints.length);
+    console.log(defaultFloorMap);
+    
+    // Create a population with a target phrase, mutation rate, and population max
+    population = new Population(linesSegments.length, mutationRate, popmax, genMax);
 }
 
-const DIST = 20;
-function drawRect(centerPoint, index, score) {
-    textSize(11);
-    rect(centerPoint[0] - (DIST / 2), centerPoint[1] - (DIST / 2), DIST, DIST);
-    strokeWeight(0);
-    fill(0, 0, 0);
-    text(index + "", centerPoint[0] - (DIST / 2), centerPoint[1] - (DIST / 2), DIST, DIST);
-    strokeWeight(2);
-    fill(255, 255, 255, 128);
-}
-
-function drawScore(centerPoint, score) {
-    fill(90, 90, 90);
-    text(score + "", (centerPoint[0] * DIST) + (cW / 2), (centerPoint[1] * DIST) + (cH / 2), DIST, DIST);
-    strokeWeight(2);
-    fill(255, 255, 255, 128);
-}
-
-function drawDNAGrid(dna) {
-    var fitness = new Fitness(dna);
-    fitness.calcScore();
-    var okay = fitness.vertScore.length > 0;
-    background(127);
-    var point = [(cW / 2), (cH / 2)];
-
-    drawRect(point, 0);
-    if (okay) {
-        drawScore(fitness.coordGenes[0], fitness.vertScore[0]);
-    }
-
-    for (var i in dna) {
-        let dir = window.parseInt(dna[i], 10);
-        let index = window.parseInt(i, 10);
-        switch (dir) {
-            case directions.DOWN:
-                point[1] += DIST;
-                break;
-            case directions.UP:
-                point[1] -= DIST;
-                break;
-            case directions.RIGHT:
-                point[0] += DIST;
-                break;
-            case directions.LEFT:
-                point[0] -= DIST;
-                break;
-
+function generateDefaultFloorMap(xPCount,yPCount)
+{
+    var width = (xPCount * 2) + 1; // one pixel for grid point (wall) and one pixel for each "room" that uses it
+    var height = (yPCount * 2) + 1;// one pixel for grid point (wall) and one pixel for each "room" that uses it
+    var map = [];
+    
+    for (var i=0; i<width; ++i)
+    {
+        var row = [];
+        for (var j=0; j<height; ++j)
+        {
+            row[j] = MapLegend.UNVISITED;
         }
-
-        drawRect(point, index + 1);
-        if (okay) {
-            drawScore(fitness.coordGenes[index], fitness.vertScore[index]);
-        }
-
+        map.push(row.slice(0));
     }
+ 
+    // fill in the borders
+    for (var key in linesSegments)
+    {
+        var p = linesSegments[key].mapCoord;
+        map[p[0]][p[1]] = MapLegend.BORDER;
+    }
+    
+    return map;
+}
 
+// avoid those costly sqrt and pow methods
+function localDist(segment)
+{
+    if (segment.sP[0] === segment.eP[0]) // vertical line
+    {
+        return Math.abs(segment.sP[1] - segment.eP[1]);
+    }
+    if (segment.sP[1] === segment.eP[1]) // vertical line
+    {
+        return Math.abs(segment.sP[0] - segment.eP[0]);
+    }
+    return 0;
+}
 
+function matrixCopy(mat)
+{
+    var map = [];
+    
+    for (var i=0; i<mat.length; ++i)
+    {
+        var row = [];
+        for (var j=0; j<mat[i].length; ++j)
+        {
+            row[j] = mat[i][j];
+        }
+        map.push(row.slice(0));
+    }
+    return map;
 }
 
 function dnaClickHandler(event) {
     let elem = event.target;
     let text = elem.innerHTML;
+    let index = parseInt(elem.getAttribute('id'),10);
     let dna = text.split(",").filter(function (part) { return !!part; });
-    drawDNAGrid(dna);
+    drawDNAGrid(dna,index);
 }
 
 
@@ -174,7 +184,6 @@ function generateOuterWalls() {
 function generateLinearPoints(length, padding, count) {
     var points = {};
     var num = padding;
-    var minPoint
     for (var i = 0; i < count; ++i) {
         var endRange = num + (length / 2);
         if (endRange > length - padding) { endRange = length - padding; }
@@ -195,17 +204,15 @@ function generateLinearPoints(length, padding, count) {
  */
 function generateGridPoints(w, h) {
     const PADDING_PERCENT = 10;
-    const hPointCount = 2;
-    const wPointCount = 3;
     var paddingValueW = (w / 100) * PADDING_PERCENT;
     var paddingValueH = (h / 100) * PADDING_PERCENT;
 
-    var hGridPoints = generateLinearPoints(h, paddingValueH, hPointCount);
-    var wGridPoints = generateLinearPoints(w, paddingValueW, wPointCount);
+    var yGridPoints = generateLinearPoints(h, paddingValueH, yPointCount);
+    var xGridPoints = generateLinearPoints(w, paddingValueW, xPointCount);
 
     return {
-        'xPoints': wGridPoints,
-        'yPoints': hGridPoints
+        'xPoints': xGridPoints,
+        'yPoints': yGridPoints
     };
 }
 
@@ -214,44 +221,77 @@ function rel2abs(point)
 {
     return [
         point[0] + outerWallsDim.topLeftpoint[0],
-        point[0] + outerWallsDim.topLeftpoint[0]
+        point[1] + outerWallsDim.topLeftpoint[1]
     ];
 }
-class Segment {
-    constructor(startPoint, endPoint)
-    {
-        this.sP = startPoint.slice(0);
-        this.eP = endPoint.slice(0);
-    }
-};
 
-function generateLineSegments(consistant, gridPoints)
+// the order this method and generateDefaultFloorMap method add segments
+// is important, change one of them you'll need to change the other
+function generateLineSegments(constraints, gridPoints)
 {
     var segmentLines = [];
     var initialPoint = rel2abs([0,0]);
+    var finishPoint = rel2abs([ constraints.width, constraints.height ]);
+    
     var startPoint = initialPoint.slice(0);
     var endPoint = [];
+    var logicalCoord  = [0,0];
     for (var xKey in gridPoints.xPoints)
     {
-        startPoint[0] = endPoint[0];
-
+        logicalCoord[0]++; //skip x empty space
         for (var yKey in gridPoints.yPoints)
         {
             endPoint = rel2abs([ gridPoints.xPoints[xKey], gridPoints.yPoints[yKey] ]);
             //create vertical segment
             segmentLines.push(new Segment(
                 [ endPoint[0] , startPoint[1] ],
-                endPoint
+                endPoint,
+                // logical map coordinates
+                logicalCoord
             ));
+            logicalCoord[1]++; //skip y empty space
             //create Horizontal segment
             segmentLines.push(new Segment(
                 [ startPoint[0], endPoint[1] ],
-                endPoint
+                endPoint,
+                // logical map coordinates
+                [ logicalCoord[0] - 1, logicalCoord[1] ]
             ));
+            logicalCoord[1]++; //skip y empty space
             startPoint[1] = endPoint[1];
         }
+        
+        // add the last segment that reach the south wall
+        segmentLines.push(new Segment(
+            endPoint,
+            [ endPoint[0] , finishPoint[1] ],
+            // logical map coordinates
+            logicalCoord
+        ));
+        
+        // reset the points
         startPoint[1] = initialPoint[1];
+        startPoint[0] = endPoint[0];
+        logicalCoord[1] = 0;
+        logicalCoord[0]++; //skip x empty space
     }
+    
+    //add all the segments that reach the east wall
+    var lastXPoint = gridPoints.xPoints[ gridPoints.xPoints.length - 1 ];
+    for (var yKey in gridPoints.yPoints)
+    {
+        startPoint = rel2abs([ lastXPoint, gridPoints.yPoints[yKey] ]);
+        endPoint = rel2abs([ constraints.width, gridPoints.yPoints[yKey] ]);
+        logicalCoord[1]++; //skip y empty space
+        //create Horizontal segment
+        segmentLines.push(new Segment(
+                startPoint,
+                endPoint,
+                logicalCoord
+            ));
+        logicalCoord[1]++; //skip y empty space
+    }
+    
     return segmentLines;
 }
 
@@ -269,43 +309,39 @@ function paintGrid(constraints, gridPoints) {
     }
 }
 
+function drawStatusText(msg)
+{
+    push();
+    strokeWeight(0);
+    fill(0,0,0);
+    text(msg, 10, 10);
+    pop();
+}
+
 function draw() {
     background(127);
-    fill(255,255,255,0);
     stroke(0, 0, 200);
     strokeWeight(2);
     rect(outerWallsDim.topLeftpoint[0], outerWallsDim.topLeftpoint[1], outerWallsDim.width, outerWallsDim.height);
-    paintGrid(outerWallsDim, gridPoints);
-    strokeWeight(0);
-    fill(255,255,255);
-    colorMode(HSB,100);
-    for (var i in linesSegments)
+//    paintGrid(outerWallsDim, gridPoints);
+    drawStatusText(pmouseX + "," + pmouseY);
+    // // Generate mating pool
+    population.naturalSelection();
+    //Create next generation
+    population.generate();
+    // Calculate fitness
+    population.calcFitness();
+
+    population.evaluate();
+//    noLoop();
+
+    // If we found the target phrase, stop
+    if (population.isFinished()) 
     {
-        stroke(parseInt(i,10), 100, 100);
-        seg = linesSegments[i];
-        console.log(seg.sP[0], seg.sP[1], seg.eP[0], seg.eP[1]);
-        line(seg.sP[0], seg.sP[1], seg.eP[0], seg.eP[1]);
+        noLoop();
     }
-    colorMode(RGB,100);
-    stroke(0, 0, 200);
-    text(pmouseX + "," + pmouseY, 10, 10);
-    noLoop();
-    // // // Generate mating pool
-    // population.naturalSelection();
-    // //Create next generation
-    // population.generate();
-    // // Calculate fitness
-    // population.calcFitness();
 
-    // population.evaluate();
-
-    // // If we found the target phrase, stop
-    // if (population.isFinished()) {
-    //     //println(millis()/1000.0);
-    //     noLoop();
-    // }
-
-    // displayInfo();
+    displayInfo();
 }
 
 function addClickEvent() {
@@ -328,25 +364,51 @@ function removeClickEvent() {
     }
 }
 
+function drawDNAGrid(dna,index)
+{
+    background(127);
+    stroke(0, 0, 200);
+    strokeWeight(2);
+    rect(outerWallsDim.topLeftpoint[0], outerWallsDim.topLeftpoint[1], outerWallsDim.width, outerWallsDim.height);
+    push();
+    colorMode(HSB,100);
+    for (var i in linesSegments)
+    {
+        var ii = parseInt(i,10);
+        var v = parseInt(dna[ii],10);
+        if (v === 1)
+        {
+            stroke(parseInt(i,10), 100, 100);
+            let seg = linesSegments[i];
+            line(seg.sP[0], seg.sP[1], seg.eP[0], seg.eP[1]);
+        }
+    }
+    pop();
+    if (index >= 0)
+    {
+        population.population[index].calcFitness();
+    }
+}
+
 function displayInfo() {
     // Display current status of population
     let answer = population.getBest();
     let fitness = population.getBestFitnessScore();
 
-    bestPhrase.html("Best area:<br>" + fitness + " <span class='dnaSel'>" + answer + "</span>");
+    bestPhrase.html("Best subject:<br>" + fitness + " <span class='dnaSel'>" + answer + "</span>");
 
     let statstext = "total generations:     " + population.getGenerations() + "<br>";
     statstext += "average fitness:       " + nf(population.getAverageFitness()) + "<br>";
     statstext += "total population:      " + popmax + "<br>";
     statstext += "mutation rate:         " + floor(mutationRate * 100) + "%<br/>";
-    statstext += "Perfect Score:         " + perfectFitness(area * area);
+    statstext += "Perfect Score:         " + perfectFitness([]);
     stats.html(statstext);
 
     // clear event listeners
 
     //removeClickEvent();
 
-    allDNAs.html("All areas:<br>" + population.allDNAs());
+    allDNAs.html("All subjects:<br>" + population.allDNAs());
 
     // add event listeners
 
@@ -354,5 +416,5 @@ function displayInfo() {
         addClickEvent();
     }
 
-    drawDNAGrid(answer.split(",").filter(function (part) { return !!part; }));
+    drawDNAGrid(answer.split(",").filter(function (part) { return !!part; }),-1);
 }
