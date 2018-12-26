@@ -42,10 +42,10 @@ let stats;
 
 let exceptionalPairThreshold = 0.9;
 
-const yPointCount = 3; // how many y axis grid points
+const yPointCount = 2; // how many y axis grid points
 const xPointCount = 4; // how many x axis grid points
 const roomNumber = 3; // this means how many doors must be present
-const maxSegmentsToRemove = 14 ;
+const maxSegmentsToRemove = 11 ;
 
 const MapLegend = {
     VISITED : 2,
@@ -95,8 +95,8 @@ function setup() {
 
     //createCanvas(640, 360);
     popmax = 50;
-    genMax = 10000;
-    mutationRate = 0.01;
+    genMax = 200;
+    mutationRate = 0.05;
 
 
     outerWallsDim = generateOuterWalls();
@@ -183,9 +183,9 @@ function dnaClickHandler(event) {
 
 function generateOuterWalls() {
     var worldConstrains = [cW - 10, cH - 10];
-    var minumumWorldConstrains = [400, 400];
-    var w = floor(random(minumumWorldConstrains[0], worldConstrains[0]));
-    var h = floor(random(minumumWorldConstrains[1], worldConstrains[1]));
+    var minumumWorldConstrains = [500, 500];
+    var w = worldConstrains[0];//floor(random(minumumWorldConstrains[0], worldConstrains[0]));
+    var h = worldConstrains[1];//floor(random(minumumWorldConstrains[1], worldConstrains[1]));
     var middlePoint = [cW / 2, cH / 2];
     // top left point, width, height
     return {
@@ -221,8 +221,20 @@ function generateGridPoints(w, h) {
     var paddingValueW = (w / 100) * PADDING_PERCENT;
     var paddingValueH = (h / 100) * PADDING_PERCENT;
 
-    var yGridPoints = generateLinearPoints(h, paddingValueH, yPointCount);
-    var xGridPoints = generateLinearPoints(w, paddingValueW, xPointCount);
+//    var yGridPoints = generateLinearPoints(h, paddingValueH, yPointCount);
+//    var xGridPoints = generateLinearPoints(w, paddingValueW, xPointCount);
+
+    var yGridPoints = [];
+    for (var i=0,p=paddingValueH*2; i<yPointCount;++i,p+=(h/yPointCount))
+    {
+        yGridPoints.push(p);
+    }
+    
+    var xGridPoints = [];
+    for (var i=0,p=paddingValueW; i<xPointCount;++i,p+=(w/xPointCount))
+    {
+        xGridPoints.push(p);
+    }
 
     return {
         'xPoints': xGridPoints,
@@ -399,6 +411,7 @@ function drawDNAGrid(dna,index)
         var v = parseInt(dna[ii],10);
         if (v === DNAMap.WALL)
         {
+            strokeWeight(2);
             stroke(parseInt(i,10), 100, 100);
             let seg = linesSegments[i];
             line(seg.sP[0], seg.sP[1], seg.eP[0], seg.eP[1]);
@@ -406,6 +419,7 @@ function drawDNAGrid(dna,index)
         if (v === DNAMap.DOOR) 
         {
             let seg = linesSegments[i];
+            strokeWeight(4);
             stroke(0, 100, 0);
             line(seg.sP[0], seg.sP[1], seg.eP[0], seg.eP[1]);
         }

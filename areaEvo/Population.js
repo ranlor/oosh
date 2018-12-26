@@ -137,7 +137,7 @@ class Population {
         });
 
         for (let i = 0; i < displayLimit; i++) {
-            everything += "<span class='dnaSel' id="+i+"> " + this.popCopy[i].getDNAString() + "</span> "+ this.popCopy[i].fitness +"<br>";
+            everything += "<span class='dnaSel' id="+i+"> " + this.popCopy[i].getDNAString() + "</span> "+ this.popCopy[i].fitness +" "+ perfectFitness(this.popCopy[i].genes) +"<br>";
         }
         return everything;
     }

@@ -2,7 +2,13 @@
 
 class FloodFill
 {
-    constructor(map)
+    constructor(map,paints)
+    {
+        this.paint = paints;
+        this.replaceMap(map);
+    }
+    
+    replaceMap(map)
     {
         this.matrix = matrixCopy(map);
         this.width = this.matrix.length;
@@ -16,7 +22,7 @@ class FloodFill
         var y = y || 0;
         this.count = 0;
         this.floodFill(x,y);
-        this.paintIt();
+        if (this.paint) { this.paintIt(); }
         return this.count;
     }
     

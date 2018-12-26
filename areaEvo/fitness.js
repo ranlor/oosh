@@ -26,7 +26,8 @@ function perfectFitness(genes)
     // remove all the pixels that are cross points between segments
     var crossPixels = gridPoints.xPoints.length * gridPoints.yPoints.length;
     
-    return mapSize - segmentsPixels - crossPixels;
+    /*since we add the number of valid doors(roomNumbers) to the fitness score we should add them here too*/
+    return mapSize - segmentsPixels - crossPixels + roomNumber;
     
 }
 
@@ -46,13 +47,18 @@ class Fitness
                 this.map[p[0]][p[1]] = MapLegend.UNVISITED;
             }
         }
-        this.floodFill = new FloodFill(this.map);
+        this.floodFill = new FloodFill(this.map,true);
         
     }
     
     calcScore()
     {
-        return this.floodFill.getFloodFillScore(0,0);
+        var geneScore = this.genes.reduce(function(acc,val){ return acc + val; });
+        if (geneScore < 7) {return 0;}
+        
+        var score = this.floodFill.getFloodFillScore(0,0);
+        var doorCorrectness = this.getDoorPlacementCorrectness(score);
+        return score + doorCorrectness;
     }
     
     getMap()
@@ -62,14 +68,13 @@ class Fitness
 
     // check which door placement is a part of a room
     // i.e. if it is surrounded with walls 
-    getDoorPlacementCorrectness()
+    getDoorPlacementCorrectness(availableSpaces)
     {
         var score = 0;
-        var availableSpaces = this.floodFill.getFloodFillScore(0,0);
         for (var i in this.genes)
         {
             var index = parseInt(i,10);
-            if (genes[index] === DNAMap.DOOR)
+            if (this.genes[index] === DNAMap.DOOR)
             {
                 var p = linesSegments[index].mapCoord;
                 if (this.isDoorCorrect(p[0],p[1],availableSpaces))
@@ -83,19 +88,26 @@ class Fitness
 
     isDoorCorrect(i,j,maxScore)
     {
-        if (i % 2 === 0) //verical point
-        {
-            
-        }
-        if (i-1 < 0) { return false; }
-        if (j-1 < 0) { return false; }
-        if ()
-        // add the door as a wall and try to flood the room to see it it's closed
         var localMap = matrixCopy(this.map);
         localMap[i][j] = MapLegend.BORDER;
-
-        var localFloodFill = new FloodFill()
+        var localFloodFill = new FloodFill(localMap,false); 
+        var scoreSum = 0;
+        if (j % 2 === 0) //verical point
+        {
+            scoreSum = localFloodFill.getFloodFillScore(i-1,j);
+            localFloodFill.replaceMap(localMap);
+            scoreSum += localFloodFill.getFloodFillScore(i+1,j);
+        }
+        else // horizontal point
+        {
+            scoreSum = localFloodFill.getFloodFillScore(i,j-1);
+            localFloodFill.replaceMap(localMap);
+            scoreSum += localFloodFill.getFloodFillScore(i,j+1);
+        }
         
+        // if the scoreSum is more than maxScore then the door we are checking
+        // is not a part of a valid room
+        return maxScore >= scoreSum;
     }
     
 }

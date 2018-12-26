@@ -18,31 +18,56 @@ class DNA {
         this.fitness = 0;
         this.DNABuild = new DNABuild();
         this.remCount = 0;
-        this.doorCount = 0;
         for (let i = 0; i < dnaLen; i++) {
-            this.genes[i] = this.doWeKeepIt(); // do we keep the segment?
+            this.genes[i] = DNAMap.WALL;//this.doWeKeepIt(); // do we keep the segment?
         }
+        // remove walls randomly where walls places are
+        this.placeStuffOnGenesOf(maxSegmentsToRemove,DNAMap.CLEAR,DNAMap.WALL);
+        
+        // place doors randomly where empty places are
+        this.placeStuffOnGenesOf(roomNumber,DNAMap.DOOR,DNAMap.CLEAR);
+        
+    }
+    
+    placeStuffOnGenesOf(howMAny,placeThis,insteadOfThis)
+    {
+        for (var i=0; i<howMAny; ++i)
+        {
+            var genePlaces = this.getGenesPlacesOf(insteadOfThis);
+            var index = this.randomer() % genePlaces.length;
+            this.genes[genePlaces[index]] = placeThis;
+        }
+    }
+    
+    getGenesPlacesOf(type)
+    {
+        var is = [];
+        for (var i in this.genes)
+        {
+            if (this.genes[i] === type)
+            {
+                is.push(parseInt(i,10));
+            }
+        }
+        return is;
+    }
+    
+    
+    randomer()
+    {
+        // using crypto random values to avoid clustering(?)
+        var array = new Uint16Array(1);
+        window.crypto.getRandomValues(array);
+        return array[0];
     }
     
     doWeKeepIt()
     {
-        var chances = [0,0,1,1,1,2,2,2,2]; // greater chance to get a door
-        var answer = floor(random(0,2048)) % chances.length;
-        answer = chances[answer];
-        
-        if (this.doorCount >= roomNumber)
-        {
-            answer = floor(random(0,2048)) % 2;
-        }
-        else
-        {
-            
-        }
+        var answer = this.randomer() % 2;
         if (this.remCount >= maxSegmentsToRemove)
         {
             return 1;
         }
-        this.doorCount++;
         this.remCount++;
         return answer;
     }
@@ -62,54 +87,80 @@ class DNA {
         // A new child
         let child = new DNA(this.genes.length);
 
-        let midpoint = floor(random(this.genes.length)); // Pick a midpoint
-
+        let midpoint = this.randomer() % this.genes.length; // Pick a midpoint
+        var childDoorCount = 0;
         // Half from one, half from the other
         // this may cause a lot of children that are unfit
         for (let i = 0; i < this.genes.length; i++) 
         {
+            var gene = 0;
             if (i > midpoint) 
             {
-                child.genes[i] = this.genes[i];
+                
+                gene = this.genes[i];
             } 
             else
             {
-                child.genes[i] = partner.genes[i];
+                gene = partner.genes[i];
             }
+            
+            if (gene === DNAMap.DOOR)
+            {
+                childDoorCount++;
+            }
+            
+            if (childDoorCount >= roomNumber)
+            {
+                gene = DNAMap.CLEAR;
+            }
+            
+            child.genes[i] = gene;
         }
         
-        // how many segments removed in child
-        var c = 0;
-        for (var i in child.genes)
+        var wallCount = child.getGenesPlacesOf(DNAMap.WALL);
+        if (wallCount.length < maxSegmentsToRemove)
         {
-            if (child.genes[i] === 0)
-            {
-                c++;
-            }
+            child.placeStuffOnGenesOf(maxSegmentsToRemove - wallCount.length,DNAMap.WALL, DNAMap.CLEAR);
         }
-
-        if (c > maxSegmentsToRemove)
+        
+        var doorsCount = child.getGenesPlacesOf(DNAMap.DOOR);
+        if (doorsCount.length < roomNumber)
         {
-            for (var i in child.genes)
-            {
-                if (child.genes[i] === 0)
-                {
-                    child.genes[i] = 1;
-                    c--;
-                }
-                if (c <=0 )
-                {
-                    break;
-                }
-            }
+            child.placeStuffOnGenesOf(roomNumber - doorsCount.length,DNAMap.DOOR, DNAMap.CLEAR);
         }
+//        
+//        // how many segments removed in child
+//        var c = 0;
+//        for (var i in child.genes)
+//        {
+//            if (child.genes[i] === 0)
+//            {
+//                c++;
+//            }
+//        }
+//
+//        if (c > maxSegmentsToRemove)
+//        {
+//            for (var i in child.genes)
+//            {
+//                if (child.genes[i] === 0)
+//                {
+//                    child.genes[i] = 1;
+//                    c--;
+//                }
+//                if (c <=0 )
+//                {
+//                    break;
+//                }
+//            }
+//        }
         return child;
     }
 
     mutate(mutationRate) {
         for (let i = 1; i < this.genes.length; i++) {
             if (random(1) < mutationRate) { //if we mutate, we toggle the  gene
-                this.genes[i] = this.genes[i] === 1 ? 0 : 1;
+                this.genes[i] = (this.genes[i] === DNAMap.WALL) ? DNAMap.CLEAR : this.genes[i];
             }
         }
     }
