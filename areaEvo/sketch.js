@@ -42,16 +42,24 @@ let stats;
 
 let exceptionalPairThreshold = 0.9;
 
-const yPointCount = 2; // how many y axis grid points
-const xPointCount = 3; // how many x axis grid points
+const yPointCount = 3; // how many y axis grid points
+const xPointCount = 4; // how many x axis grid points
+const roomNumber = 3; // this means how many doors must be present
+const maxSegmentsToRemove = 14 ;
 
 const MapLegend = {
     VISITED : 2,
     BORDER : 1,
     UNVISITED : 0
 };
+let logicalCrossPoints = [];
 let defaultFloorMap = [];
 
+const DNAMap = {
+    CLEAR : 0,
+    WALL : 1,
+    DOOR : 2
+};
 class Segment {
     constructor(startPoint, endPoint, mc)
     {
@@ -71,7 +79,7 @@ function setup() {
     bestPhrase.class("best");
 
     allDNAs = createP("All areas:");
-    allDNAs.position(600, 10);
+    allDNAs.position(cW+10, 90);
     allDNAs.class("all");
 
     stats = createP("Stats");
@@ -86,8 +94,8 @@ function setup() {
     fill(255, 255, 255, 0);
 
     //createCanvas(640, 360);
-    popmax = 100;
-    genMax = 1000;
+    popmax = 50;
+    genMax = 10000;
     mutationRate = 0.01;
 
 
@@ -122,6 +130,12 @@ function generateDefaultFloorMap(xPCount,yPCount)
     for (var key in linesSegments)
     {
         var p = linesSegments[key].mapCoord;
+        map[p[0]][p[1]] = MapLegend.BORDER;
+    }
+
+    for (var key in logicalCrossPoints)
+    {
+        var p = logicalCrossPoints[key];
         map[p[0]][p[1]] = MapLegend.BORDER;
     }
     
@@ -169,7 +183,7 @@ function dnaClickHandler(event) {
 
 function generateOuterWalls() {
     var worldConstrains = [cW - 10, cH - 10];
-    var minumumWorldConstrains = [200, 200];
+    var minumumWorldConstrains = [400, 400];
     var w = floor(random(minumumWorldConstrains[0], worldConstrains[0]));
     var h = floor(random(minumumWorldConstrains[1], worldConstrains[1]));
     var middlePoint = [cW / 2, cH / 2];
@@ -190,7 +204,7 @@ function generateLinearPoints(length, padding, count) {
         if (num + padding < endRange) {
             num = floor(random(num, endRange));
             points[num + ""] = num; // to avoid happing duplicate points
-            num += 10; // add padding to ensure the next point won't be too close
+            num += 60; // add padding to ensure the next point won't be too close
         }
     }
     // console.log(length, padding, count, Object.values(points));
@@ -257,6 +271,7 @@ function generateLineSegments(constraints, gridPoints)
                 // logical map coordinates
                 [ logicalCoord[0] - 1, logicalCoord[1] ]
             ));
+            logicalCrossPoints.push(logicalCoord.slice(0));
             logicalCoord[1]++; //skip y empty space
             startPoint[1] = endPoint[1];
         }
@@ -350,7 +365,10 @@ function addClickEvent() {
     if (elems.length < 1) { return; }
 
     for (var i in elems) {
-        elems[i].addEventListener('click', dnaClickHandler);
+        if (typeof elems[i].addEventListener !== "undefined") 
+        { 
+            elems[i].addEventListener('click', dnaClickHandler);
+        }
     }
 }
 
@@ -367,26 +385,35 @@ function removeClickEvent() {
 function drawDNAGrid(dna,index)
 {
     background(127);
+    // paint outline of the full segments
     stroke(0, 0, 200);
     strokeWeight(2);
     rect(outerWallsDim.topLeftpoint[0], outerWallsDim.topLeftpoint[1], outerWallsDim.width, outerWallsDim.height);
     push();
+    stroke(0, 0, 200,40);
+    paintGrid(outerWallsDim, gridPoints);
     colorMode(HSB,100);
     for (var i in linesSegments)
     {
         var ii = parseInt(i,10);
         var v = parseInt(dna[ii],10);
-        if (v === 1)
+        if (v === DNAMap.WALL)
         {
             stroke(parseInt(i,10), 100, 100);
             let seg = linesSegments[i];
+            line(seg.sP[0], seg.sP[1], seg.eP[0], seg.eP[1]);
+        }
+        if (v === DNAMap.DOOR) 
+        {
+            let seg = linesSegments[i];
+            stroke(0, 100, 0);
             line(seg.sP[0], seg.sP[1], seg.eP[0], seg.eP[1]);
         }
     }
     pop();
     if (index >= 0)
     {
-        population.population[index].calcFitness();
+        population.popCopy[index].calcFitness();
     }
 }
 
@@ -395,7 +422,7 @@ function displayInfo() {
     let answer = population.getBest();
     let fitness = population.getBestFitnessScore();
 
-    bestPhrase.html("Best subject:<br>" + fitness + " <span class='dnaSel'>" + answer + "</span>");
+    bestPhrase.html("Best subject:<br>" + fitness + " <span class='dnaSel' id='0'>" + answer + "</span>");
 
     let statstext = "total generations:     " + population.getGenerations() + "<br>";
     statstext += "average fitness:       " + nf(population.getAverageFitness()) + "<br>";
@@ -416,5 +443,5 @@ function displayInfo() {
         addClickEvent();
     }
 
-    drawDNAGrid(answer.split(",").filter(function (part) { return !!part; }),-1);
+    drawDNAGrid(answer.split(",").filter(function (part) { return !!part; }),0);
 }

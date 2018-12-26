@@ -22,8 +22,11 @@ function perfectFitness(genes)
             segmentsPixels++;
         }
     }
+
+    // remove all the pixels that are cross points between segments
+    var crossPixels = gridPoints.xPoints.length * gridPoints.yPoints.length;
     
-    return mapSize - segmentsPixels;
+    return mapSize - segmentsPixels - crossPixels;
     
 }
 
@@ -37,7 +40,7 @@ class Fitness
         for (var i in genes)
         {
             var index = parseInt(i,10);
-            if (genes[index] === 0)
+            if (genes[index] === DNAMap.CLEAR || genes[index] === DNAMap.DOOR)
             {
                 var p = linesSegments[index].mapCoord;
                 this.map[p[0]][p[1]] = MapLegend.UNVISITED;
@@ -49,12 +52,50 @@ class Fitness
     
     calcScore()
     {
-        return this.floodFill.getFloodFillScore();
+        return this.floodFill.getFloodFillScore(0,0);
     }
     
     getMap()
     {
         return this.map;
+    }
+
+    // check which door placement is a part of a room
+    // i.e. if it is surrounded with walls 
+    getDoorPlacementCorrectness()
+    {
+        var score = 0;
+        var availableSpaces = this.floodFill.getFloodFillScore(0,0);
+        for (var i in this.genes)
+        {
+            var index = parseInt(i,10);
+            if (genes[index] === DNAMap.DOOR)
+            {
+                var p = linesSegments[index].mapCoord;
+                if (this.isDoorCorrect(p[0],p[1],availableSpaces))
+                {
+                    score++;
+                }
+            }
+        }
+        return score;
+    }
+
+    isDoorCorrect(i,j,maxScore)
+    {
+        if (i % 2 === 0) //verical point
+        {
+            
+        }
+        if (i-1 < 0) { return false; }
+        if (j-1 < 0) { return false; }
+        if ()
+        // add the door as a wall and try to flood the room to see it it's closed
+        var localMap = matrixCopy(this.map);
+        localMap[i][j] = MapLegend.BORDER;
+
+        var localFloodFill = new FloodFill()
+        
     }
     
 }

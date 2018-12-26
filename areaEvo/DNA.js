@@ -6,7 +6,8 @@
 // if we have a DNA of size 4 with |0,1,0,1| 
 // we know that we need to remove the segments with id 0 and 2
 // and keep the segments 1 and 3
-
+// Addendum: add doors to the DNA, value of 2 will indicate a door
+// and will marked as a removed segment in the flood fill map
 
 // Constructor (makes a random DNA)
 class DNA {
@@ -16,6 +17,8 @@ class DNA {
         this.genes = [];
         this.fitness = 0;
         this.DNABuild = new DNABuild();
+        this.remCount = 0;
+        this.doorCount = 0;
         for (let i = 0; i < dnaLen; i++) {
             this.genes[i] = this.doWeKeepIt(); // do we keep the segment?
         }
@@ -23,7 +26,25 @@ class DNA {
     
     doWeKeepIt()
     {
-        return floor(random(0,2048)) % 2;
+        var chances = [0,0,1,1,1,2,2,2,2]; // greater chance to get a door
+        var answer = floor(random(0,2048)) % chances.length;
+        answer = chances[answer];
+        
+        if (this.doorCount >= roomNumber)
+        {
+            answer = floor(random(0,2048)) % 2;
+        }
+        else
+        {
+            
+        }
+        if (this.remCount >= maxSegmentsToRemove)
+        {
+            return 1;
+        }
+        this.doorCount++;
+        this.remCount++;
+        return answer;
     }
 
     // Converts character array to a String
@@ -57,6 +78,31 @@ class DNA {
             }
         }
         
+        // how many segments removed in child
+        var c = 0;
+        for (var i in child.genes)
+        {
+            if (child.genes[i] === 0)
+            {
+                c++;
+            }
+        }
+
+        if (c > maxSegmentsToRemove)
+        {
+            for (var i in child.genes)
+            {
+                if (child.genes[i] === 0)
+                {
+                    child.genes[i] = 1;
+                    c--;
+                }
+                if (c <=0 )
+                {
+                    break;
+                }
+            }
+        }
         return child;
     }
 

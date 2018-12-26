@@ -10,10 +10,12 @@ class FloodFill
         this.count = 0;
     }
     
-    getFloodFillScore()
+    getFloodFillScore(x,y)
     {
+        var x = x || 0;
+        var y = y || 0;
         this.count = 0;
-        this.floodFill(0,0);
+        this.floodFill(x,y);
         this.paintIt();
         return this.count;
     }

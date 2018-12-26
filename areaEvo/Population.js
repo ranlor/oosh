@@ -12,6 +12,7 @@ class Population {
         this.best = "";
         
         this.population = [];
+        this.popCopy = [];
         for (let i = 0; i < maxPop; i++) {
             this.population[i] = new DNA(segmentsCount);
         }
@@ -130,9 +131,13 @@ class Population {
 
         let displayLimit = min(this.population.length, 50);
 
+        this.popCopy = this.population.slice(0);
+        this.popCopy.sort(function(a,b){
+            return b.fitness - a.fitness;
+        });
 
         for (let i = 0; i < displayLimit; i++) {
-            everything += "<span class='dnaSel' id="+i+"> " + this.population[i].getDNAString() + "</span> "+ this.population[i].fitness +"<br>";
+            everything += "<span class='dnaSel' id="+i+"> " + this.popCopy[i].getDNAString() + "</span> "+ this.popCopy[i].fitness +"<br>";
         }
         return everything;
     }
